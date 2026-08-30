@@ -27,9 +27,10 @@ public class DrunkFightPlayer : NetworkBehaviour
     [SerializeField] private byte sipsPerBottle = 3;
     [SerializeField] private float sipLockSeconds = 0.9f;
 
-    [Header("Sword (built at runtime)")]
-    [SerializeField] private float shoulderHeight = 1.42f;
-    [SerializeField] private float shoulderSide = 0.30f;
+    [Header("Sword (built at runtime). The pivot rides on the character model," +
+            " whose origin sits at the FEET after ground calibration.")]
+    [SerializeField] private float shoulderHeightAboveFeet = 1.45f;
+    [SerializeField] private float shoulderSide = 0.26f;
 
     public float MaxHp => maxHp;
 
@@ -150,16 +151,27 @@ public class DrunkFightPlayer : NetworkBehaviour
 
     private void BuildSword()
     {
+        // parent under the character model so the blade rides along with the
+        // ground-calibrated body (falls back to the root if no model exists)
+        var model = transform.Find("Model");
+        var parent = model != null ? model.transform : transform;
+
         var pivotGo = new GameObject("SwordPivot");
-        pivotGo.transform.SetParent(transform, false);
-        pivotGo.transform.localPosition = new Vector3(shoulderSide, shoulderHeight, 0.05f);
+        pivotGo.transform.SetParent(parent, false);
+
+        // the model carries a fit scale (~0.93), so express the shoulder in
+        // meters-above-feet and undo the parent scale
+        var s = parent.lossyScale;
+        pivotGo.transform.localPosition = new Vector3(
+            shoulderSide / s.x, shoulderHeightAboveFeet / s.y, 0.04f / s.z);
+
         _sword = pivotGo.AddComponent<SwordWielder>();
         _sword.Initialize(this);
     }
 
     private void BuildBottle()
     {
-        _bottle = WhiskeyBottle.Build(transform, new Vector3(-0.20f, 0.98f, -0.08f));
+        _bottle = WhiskeyBottle.Build(transform, new Vector3(-0.20f, 0.02f, -0.07f));
         _bottleRestPos = _bottle.localPosition;
         _bottleRestRot = _bottle.localRotation;
     }

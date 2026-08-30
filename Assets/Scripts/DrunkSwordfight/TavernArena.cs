@@ -134,14 +134,14 @@ public class TavernArena : MonoBehaviour
         moonGo.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
         var moon = moonGo.AddComponent<Light>();
         moon.type = LightType.Directional;
-        moon.color = new Color(0.45f, 0.55f, 0.85f);
-        moon.intensity = 0.22f;
+        moon.color = new Color(0.5f, 0.6f, 0.9f);
+        moon.intensity = 0.4f;
         moon.shadows = LightShadows.Soft;
 
-        Point(new Vector3(0, 3.0f, 0.5f), 12f, 1.5f);          // center of the brawl
-        Point(new Vector3(0, 2.3f, -5.9f), 6.5f, 1.1f);        // over the bar
-        Point(new Vector3(-5.0f, 2.3f, 5.0f), 7f, 0.9f);       // corner sconces
-        Point(new Vector3(5.0f, 2.3f, 5.0f), 7f, 0.9f);
+        Point(new Vector3(0, 3.0f, 0.5f), 14f, 2.6f);         // center of the brawl
+        Point(new Vector3(0, 2.3f, -5.9f), 8f, 1.8f);         // over the bar
+        Point(new Vector3(-5.0f, 2.3f, 5.0f), 8f, 1.5f);      // corner sconces
+        Point(new Vector3(5.0f, 2.3f, 5.0f), 8f, 1.5f);
     }
 
     private void Point(Vector3 pos, float range, float intensity)

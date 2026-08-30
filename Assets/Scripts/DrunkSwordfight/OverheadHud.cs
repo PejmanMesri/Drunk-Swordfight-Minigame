@@ -1,4 +1,3 @@
-using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +5,9 @@ using UnityEngine.UI;
 /// Floating billboard above each fighter: name, HP bar, sips left and how
 /// drunk they are. Runs on every peer and reads the NetworkVariables, so it
 /// stays in sync for free.
+///
+/// Heights are ROOT-LOCAL: the avatar root is the capsule center, feet at
+/// -1, head around +0.75 — so the bar lives just above the head at +1.05.
 /// </summary>
 public class OverheadHud : MonoBehaviour
 {
@@ -17,11 +19,14 @@ public class OverheadHud : MonoBehaviour
     private Image[] _drunkPips;
     private CanvasGroup _group;
 
+    private static Camera _camCache;
+    private static float _camRefreshAt;
+
     public static OverheadHud Create(DrunkFightPlayer owner)
     {
         var go = new GameObject("OverheadHud");
         go.transform.SetParent(owner.transform, false);
-        go.transform.localPosition = new Vector3(0f, 2.45f, 0f);
+        go.transform.localPosition = new Vector3(0f, 1.05f, 0f);
 
         var hud = go.AddComponent<OverheadHud>();
         hud._owner = owner;
@@ -38,34 +43,33 @@ public class OverheadHud : MonoBehaviour
         _group = gameObject.AddComponent<CanvasGroup>();
 
         var root = (RectTransform)transform;
-        root.sizeDelta = new Vector2(1.7f, 0.6f);
+        root.sizeDelta = new Vector2(0.95f, 0.30f);
         root.localScale = Vector3.one;
 
         var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-        _name = MakeText(font, 30, TextAnchor.LowerCenter);
+        _name = MakeText(font, 14, TextAnchor.LowerCenter);
         _name.rectTransform.anchorMin = _name.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-        _name.rectTransform.sizeDelta = new Vector2(1.7f, 0.26f);
+        _name.rectTransform.sizeDelta = new Vector2(0.95f, 0.13f);
         _name.rectTransform.anchoredPosition = Vector2.zero;
-        _name.color = new Color(1f, 0.92f, 0.7f);
+        _name.color = new Color(1f, 0.93f, 0.72f);
 
         var bg = MakeImage(new Color(0f, 0f, 0f, 0.65f));
-        bg.rectTransform.anchorMin = new Vector2(0.5f, 1f);
-        bg.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-        bg.rectTransform.sizeDelta = new Vector2(1.3f, 0.14f);
-        bg.rectTransform.anchoredPosition = new Vector2(0f, -0.32f);
+        bg.rectTransform.anchorMin = bg.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+        bg.rectTransform.sizeDelta = new Vector2(0.72f, 0.075f);
+        bg.rectTransform.anchoredPosition = new Vector2(0f, -0.20f);
 
         _hpFill = MakeImage(new Color(0.85f, 0.2f, 0.15f));
         _hpFillRect = (RectTransform)_hpFill.transform;
         _hpFillRect.SetParent(bg.rectTransform, false);
         _hpFillRect.anchorMin = Vector2.zero;
         _hpFillRect.anchorMax = Vector2.one;
-        _hpFillRect.offsetMin = new Vector2(0.015f, 0.015f);
-        _hpFillRect.offsetMax = new Vector2(-0.015f, -0.015f);
+        _hpFillRect.offsetMin = new Vector2(0.008f, 0.008f);
+        _hpFillRect.offsetMax = new Vector2(-0.008f, -0.008f);
 
         // three amber pips (sips) on the left, three red pips (drunk) on the right
-        _sipPips = MakePips(new Vector2(-0.78f, -0.32f), new Color(1f, 0.62f, 0.15f));
-        _drunkPips = MakePips(new Vector2(0.78f, -0.32f), new Color(0.9f, 0.15f, 0.1f));
+        _sipPips = MakePips(new Vector2(-0.44f, -0.20f), new Color(1f, 0.62f, 0.15f));
+        _drunkPips = MakePips(new Vector2(0.44f, -0.20f), new Color(0.9f, 0.15f, 0.1f));
     }
 
     private Image[] MakePips(Vector2 pos, Color color)
@@ -74,8 +78,8 @@ public class OverheadHud : MonoBehaviour
         for (int i = 0; i < 3; i++)
         {
             var pip = MakeImage(color);
-            pip.rectTransform.sizeDelta = new Vector2(0.09f, 0.09f);
-            pip.rectTransform.anchoredPosition = pos + new Vector2(0f, 0.045f * (i - 1));
+            pip.rectTransform.sizeDelta = new Vector2(0.045f, 0.045f);
+            pip.rectTransform.anchoredPosition = pos + new Vector2(0f, 0.052f * (i - 1));
             pips[i] = pip;
         }
         return pips;
@@ -110,9 +114,6 @@ public class OverheadHud : MonoBehaviour
         if (_group != null) _group.alpha = 0.35f;
         if (_name != null) _name.color = new Color(0.6f, 0.6f, 0.6f);
     }
-
-    private static Camera _camCache;
-    private static float _camRefreshAt;
 
     private void LateUpdate()
     {

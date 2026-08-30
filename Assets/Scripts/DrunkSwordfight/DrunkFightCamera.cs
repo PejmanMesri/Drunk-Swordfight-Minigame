@@ -78,14 +78,15 @@ public class DrunkFightCamera : MonoBehaviour
         float pitchOff = (Mathf.PerlinNoise(t * 0.72f, 8.2f) - 0.5f) * 3.6f * wob;
         float roll = (Mathf.PerlinNoise(t * 0.40f, 12.3f) - 0.5f) * 14f * wob;
 
-        var pivot = _target.position + Vector3.up * 1.5f;
+        // root is the capsule center: chest/head is about +0.5, not +1.5
+        var pivot = _target.position + Vector3.up * 0.5f;
         float dist = 3.4f + Mathf.Sin(t * 0.9f) * 0.05f + wob * 0.18f;
         var rot = Quaternion.Euler(Pitch + pitchOff, Yaw + yawOff, 0f);
         var wanted = pivot - rot * Vector3.forward * dist;
 
         transform.position = Vector3.SmoothDamp(transform.position, wanted, ref _posVel, 0.08f);
 
-        var lookRot = Quaternion.LookRotation(pivot + rot * Vector3.forward * 0.8f - transform.position);
+        var lookRot = Quaternion.LookRotation(pivot + rot * Vector3.forward * 0.6f - transform.position);
         transform.rotation = lookRot * Quaternion.Euler(0f, 0f, roll);
 
         // hit shake

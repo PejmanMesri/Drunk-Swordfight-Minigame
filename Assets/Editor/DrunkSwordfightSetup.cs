@@ -348,11 +348,11 @@ public static class DrunkSwordfightSetup
 
         // editor-preview atmosphere (runtime re-applies it per peer anyway)
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.16f, 0.12f, 0.09f);
+        RenderSettings.ambientLight = new Color(0.27f, 0.21f, 0.16f);
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogColor = new Color(0.05f, 0.035f, 0.02f);
-        RenderSettings.fogDensity = 0.012f;
+        RenderSettings.fogColor = new Color(0.07f, 0.05f, 0.03f);
+        RenderSettings.fogDensity = 0.008f;
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         Debug.Log($"[DrunkSwordfightSetup] Scene saved: {ScenePath}");

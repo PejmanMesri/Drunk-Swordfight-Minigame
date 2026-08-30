@@ -53,12 +53,12 @@ public class FighterHud : MonoBehaviour
         var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
         // ---- bottom left: name + HP ------------------------------------
-        _nameText = Text(font, 30, new Vector2(40, -40), new Vector2(600, 40),
-            new Vector2(0f, 1f), TextAnchor.LowerLeft, new Color(1f, 0.92f, 0.7f));
+        _nameText = Text(font, 28, new Vector2(330, 96), new Vector2(600, 40),
+            new Vector2(0f, 0f), TextAnchor.MiddleCenter, new Color(1f, 0.92f, 0.7f));
 
-        var hpBg = Image(new Color(0f, 0f, 0f, 0.6f), new Vector2(40, -100), new Vector2(560, 34),
-            new Vector2(0f, 1f));
-        _hpFill = Image(new Color(0.25f, 0.8f, 0.25f), Vector2.zero, Vector2.zero, new Vector2(0f, 1f));
+        var hpBg = Image(new Color(0f, 0f, 0f, 0.6f), new Vector2(330, 48), new Vector2(560, 32),
+            new Vector2(0f, 0f));
+        _hpFill = Image(new Color(0.25f, 0.8f, 0.25f), Vector2.zero, Vector2.zero, new Vector2(0f, 0f));
         _hpFillRect = (RectTransform)_hpFill.transform;
         _hpFillRect.SetParent(hpBg.rectTransform, false);
         _hpFillRect.anchorMin = Vector2.zero;
@@ -66,31 +66,29 @@ public class FighterHud : MonoBehaviour
         _hpFillRect.offsetMin = new Vector2(4, 4);
         _hpFillRect.offsetMax = new Vector2(-4, -4);
 
-        _hpText = Text(font, 24, new Vector2(40, -150), new Vector2(400, 34),
-            new Vector2(0f, 1f), TextAnchor.LowerLeft, Color.white);
+        _hpText = Text(font, 18, new Vector2(330, 48), new Vector2(560, 32),
+            new Vector2(0f, 0f), TextAnchor.MiddleCenter, Color.white);
 
         // ---- bottom right: whiskey + sips + drunk meter -----------------
-        var bottleBody = Image(new Color(0.55f, 0.22f, 0.05f, 0.95f), new Vector2(-70, -150), new Vector2(44, 104),
-            new Vector2(1f, 1f));
-        Image(new Color(0.55f, 0.22f, 0.05f, 0.95f), new Vector2(-70, -86), new Vector2(18, 34), new Vector2(1f, 1f));
-        Image(new Color(0.8f, 0.65f, 0.45f, 0.95f), new Vector2(-70, -64), new Vector2(20, 10), new Vector2(1f, 1f));
-        Image(new Color(0.95f, 0.9f, 0.75f, 0.9f), new Vector2(-70, -136), new Vector2(48, 26), new Vector2(1f, 1f));
-        _ = bottleBody;
+        Image(new Color(0.55f, 0.22f, 0.05f, 0.95f), new Vector2(-70, 62), new Vector2(44, 100), new Vector2(1f, 0f));
+        Image(new Color(0.55f, 0.22f, 0.05f, 0.95f), new Vector2(-70, 126), new Vector2(16, 30), new Vector2(1f, 0f));
+        Image(new Color(0.66f, 0.51f, 0.36f, 0.95f), new Vector2(-70, 156), new Vector2(20, 12), new Vector2(1f, 0f));
+        Image(new Color(0.95f, 0.9f, 0.75f, 0.9f), new Vector2(-70, 48), new Vector2(48, 26), new Vector2(1f, 0f));
 
         _sipPips = new Image[3];
         for (int i = 0; i < 3; i++)
         {
             _sipPips[i] = Image(new Color(1f, 0.62f, 0.15f),
-                new Vector2(-40 - i * 34, -230), new Vector2(24, 24), new Vector2(1f, 1f));
+                new Vector2(-28, 28 + i * 34), new Vector2(22, 22), new Vector2(1f, 0f));
         }
-        Text(font, 22, new Vector2(-40, -268), new Vector2(300, 30), new Vector2(1f, 1f),
-            TextAnchor.UpperRight, new Color(1f, 0.92f, 0.7f)).text = "Q — SIP";
+        Text(font, 22, new Vector2(-40, 168), new Vector2(300, 30), new Vector2(1f, 0f),
+            TextAnchor.LowerRight, new Color(1f, 0.92f, 0.7f)).text = "Q — SIP";
 
-        _drunkText = Text(font, 30, new Vector2(-40, -60), new Vector2(400, 40), new Vector2(1f, 1f),
-            TextAnchor.UpperRight, DrunkColors[0]);
+        _drunkText = Text(font, 30, new Vector2(-40, 200), new Vector2(400, 40), new Vector2(1f, 0f),
+            TextAnchor.LowerRight, DrunkColors[0]);
 
         // ---- top center: announcements -----------------------------------
-        _announce = Text(font, 72, new Vector2(0, -70), new Vector2(1400, 100), new Vector2(0.5f, 1f),
+        _announce = Text(font, 56, new Vector2(0, -80), new Vector2(1500, 90), new Vector2(0.5f, 1f),
             TextAnchor.UpperCenter, new Color(1f, 0.85f, 0.4f));
 
         // ---- crosshair ----------------------------------------------------
@@ -102,7 +100,7 @@ public class FighterHud : MonoBehaviour
         _sipFlash = Image(new Color(1f, 0.75f, 0.25f, 0f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
         Stretch(_sipFlash.rectTransform);
 
-        _sipPopup = Text(font, 44, new Vector2(0, -260), new Vector2(500, 60), new Vector2(0.5f, 1f),
+        _sipPopup = Text(font, 40, new Vector2(0, -300), new Vector2(500, 60), new Vector2(0.5f, 1f),
             TextAnchor.UpperCenter, new Color(0.6f, 1f, 0.5f, 0f));
         _sipPopup.text = "+35 HP ... and a bit more drunk";
 

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Collections;
 using NUnit.Framework;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -27,6 +28,16 @@ public class DrunkSwordfightSmokeTests
 
         var nm = NetworkManager.Singleton;
         Assert.IsNotNull(nm, "NetworkManager missing from Hub scene");
+
+        // use our own port so the test can run while an editor play session
+        // (or another test run) holds the default 7777
+        var transport = nm.GetComponent<UnityTransport>();
+        if (transport != null)
+        {
+            transport.ConnectionData.Address = "127.0.0.1";
+            transport.ConnectionData.Port = 17877;
+        }
+
         nm.StartHost();
         yield return new WaitForSeconds(0.5f);
 
