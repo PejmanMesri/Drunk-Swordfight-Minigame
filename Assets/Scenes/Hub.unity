@@ -334,6 +334,7 @@ MonoBehaviour:
   playerAvatarPrefab: {fileID: 5890380717788471327, guid: ed73feffac6302249ab2c9f61d83efab, type: 3}
   minigameScenes:
   - MG_PlatformFall
+  - MG_DrunkSwordfight
   pointsByPlacement: 03000000020000000100000000000000
   Scores:
     UpdateTraits:

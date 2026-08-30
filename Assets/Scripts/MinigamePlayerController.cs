@@ -19,6 +19,7 @@ public class MinigamePlayerController : NetworkBehaviour
     private Rigidbody _rb;
     private Vector2 _hostInput;   // host side: latest intent from this client
     private Vector2 _lastSent;    // owner side: don't spam identical input
+    private Vector2? _moveOverride; // owner side: one-frame camera-relative input from another component
 
     private void Awake()
     {
@@ -26,11 +27,19 @@ public class MinigamePlayerController : NetworkBehaviour
         _rb.freezeRotation = true;
     }
 
+    /// <summary>
+    /// Optional: another component (e.g. DrunkFightPlayer) can redirect the
+    /// WASD intent, camera-relative. Set every frame; null falls back to raw
+    /// keyboard axes.
+    /// </summary>
+    public void SetMoveInputOverride(Vector2? input) => _moveOverride = input;
+
     private void Update()
     {
         if (!IsOwner) return;
 
-        var input = ReadInput();
+        var input = _moveOverride ?? ReadInput();
+        _moveOverride = null;
         if (input == _lastSent) return;
 
         _lastSent = input;
@@ -56,13 +65,19 @@ public class MinigamePlayerController : NetworkBehaviour
     private static Vector2 ReadInput()
     {
 #if ENABLE_INPUT_SYSTEM
+        return ReadWasd();
+#else
+        return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+#endif
+    }
+
+    /// <summary>Raw WASD intent in [-1,1] on both axes (new Input System).</summary>
+    public static Vector2 ReadWasd()
+    {
         var kb = Keyboard.current;
         if (kb == null) return Vector2.zero;
         float x = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
         float y = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
         return new Vector2(x, y);
-#else
-        return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-#endif
     }
 }
