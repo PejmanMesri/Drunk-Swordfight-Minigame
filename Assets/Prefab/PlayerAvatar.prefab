@@ -38,7 +38,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 147456836965254886}
+  - {fileID: 5478467831046068601}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &1962859963796989596
@@ -368,7 +368,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameRuntime::AvatarAnimatorDriver
   walkSpeedReference: 5
---- !u!1001 &396710715529437453
+--- !u!1001 &5444240664652594834
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -461,8 +461,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: df8cfbeb789894a448f14c3ea7c7f019, type: 3}
---- !u!4 &147456836965254886 stripped
+--- !u!4 &5478467831046068601 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: df8cfbeb789894a448f14c3ea7c7f019, type: 3}
-  m_PrefabInstance: {fileID: 396710715529437453}
+  m_PrefabInstance: {fileID: 5444240664652594834}
   m_PrefabAsset: {fileID: 0}

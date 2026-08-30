@@ -65,6 +65,50 @@ public class DrunkSwordfightSmokeTests
             yield return null;
         Assert.IsFalse(fighter.Frozen.Value, "countdown never ended");
 
+        // ---- sword blocking: a second networked fighter, blades crossed ----
+        var avatarPrefab = (GameObject)typeof(MinigameManager)
+            .GetField("playerAvatarPrefab", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?.GetValue(mm);
+        Assert.IsNotNull(avatarPrefab, "MinigameManager has no avatar prefab");
+
+        Vector3 fwd = fighter.transform.forward;
+        var cloneGo = Object.Instantiate(avatarPrefab,
+            fighter.transform.position + fwd * 0.9f, Quaternion.LookRotation(-fwd));
+        var cloneNo = cloneGo.GetComponent<NetworkObject>();
+        cloneNo.Spawn();
+        yield return new WaitForSeconds(0.3f);
+
+        var fake = cloneGo.GetComponent<DrunkFightPlayer>();
+        Assert.IsNotNull(fake, "clone has no DrunkFightPlayer");
+        Assert.IsTrue(fake.GearActive, "clone gear should activate (scene is loaded)");
+        fake.HostSetFrozen(false);      // fresh avatars spawn frozen
+
+        var realSword = fighter.Sword;
+        var fakeSword = fake.Sword;
+        Assert.IsNotNull(realSword, "our sword missing");
+        Assert.IsNotNull(fakeSword, "their sword missing");
+
+        // aim both blades at the same midpoint so they cross
+        var mid = (realSword.Pivot + fakeSword.Pivot) * 0.5f + Vector3.up * 0.05f;
+        realSword.DebugSetBlade(mid - realSword.Pivot, Vector3.up * 6f, realSword.TipPos);
+        fakeSword.DebugSetBlade(mid - fakeSword.Pivot, -Vector3.up * 6f, fakeSword.TipPos);
+
+        SwordClash.RunHostPairs(realSword);
+
+        Assert.IsTrue(realSword.IsParryLocked, "our blade should be blocked by their blade");
+        Assert.IsTrue(fakeSword.IsParryLocked, "their blade should be blocked by ours");
+
+        // even a full-speed sweep while parried deals no damage
+        Vector3 aim = (mid - realSword.Pivot).normalized;
+        realSword.DebugSetBlade(aim,
+            Vector3.Cross(Vector3.up, aim).normalized * 15f,
+            realSword.TipPos - aim * (Time.fixedDeltaTime * 8f));
+        realSword.HostSweepForDamage(Time.fixedDeltaTime);
+        Assert.AreEqual(100f, fake.Hp.Value, 0.01f, "a parried sweep must deal no damage");
+
+        cloneNo.Despawn(true);
+        yield return null;
+
         // sip whiskey (call the ServerRpc body directly; we ARE the host).
         // sips are locked for ~0.9s each, so wait between them.
         CallPrivate(fighter, "TrySipServerRpc");

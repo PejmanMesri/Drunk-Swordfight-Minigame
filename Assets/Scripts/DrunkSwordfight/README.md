@@ -14,6 +14,17 @@ Last one standing wins.
 | Q | Sip whiskey: +35 HP, +1 drunk level. **3 sips, one bottle, no refills.** |
 | ESC | Release the mouse cursor (click to grab it again) |
 
+## Blocking
+
+Swords block swords. On the host, every pair of live blades is checked each
+physics step: if the two blade segments come within ~18 cm of each other,
+both swords are **parried** — no damage while the lock lasts, both swings
+bounce apart (clang + sparks + a small stagger), and the client-side blade
+springs bounce the same way via ClientRpc. Holding your blade against
+someone's keeps refreshing the parry (a sword lock), so a well-placed blade
+physically stops their swings — including mutual hits: if you both swing
+into each other, both attacks die on the blades and nobody takes damage.
+
 ## The whiskey trade-off
 
 Each sip heals 35 HP but adds a drunk level (0-3). Drunk levels stack:
@@ -38,6 +49,9 @@ So the bottle is a comeback mechanic that costs you control.
 - `SwordWielder` — the blade spring, simulated on every peer from the
   synced body yaw + aim pitch. Only the host judges hits (capsule sweeps
   between the last two blade-tip positions, damage scales with tip speed).
+- `SwordClash` — host-side blade-vs-blade blocking: crossed blades parry
+  each other (damage lockout + bounce impulses), sustained contact keeps
+  the block up.
 - `TavernArena` — builds the tavern deterministically in `Awake` on every
   peer: floor, bar, tables, stools, barrels, crates, lanterns.
 - `DrunkFightCamera` / `FighterHud` / `OverheadHud` — owner camera + HUD,

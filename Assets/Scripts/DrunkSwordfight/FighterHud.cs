@@ -109,7 +109,7 @@ public class FighterHud : MonoBehaviour
         // ---- controls hint --------------------------------------------------
         _hint = Text(font, 26, new Vector2(0, 40), new Vector2(1200, 40), new Vector2(0.5f, 0f),
             TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.8f));
-        _hint.text = "WASD move  ·  MOUSE wields the sword  ·  LMB stab  ·  Q sip whiskey";
+        _hint.text = "WASD move  ·  MOUSE wields the sword  ·  LMB stab  ·  Q sip whiskey  ·  cross blades to block";
     }
 
     private static void Stretch(RectTransform rt)

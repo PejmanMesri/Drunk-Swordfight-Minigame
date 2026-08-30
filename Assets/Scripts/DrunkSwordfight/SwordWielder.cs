@@ -39,8 +39,26 @@ public class SwordWielder : MonoBehaviour
     private readonly Dictionary<DrunkFightPlayer, float> _lastHitAt = new();
     private float _lastWhooshAt;
     private float _lastClangAt;
+    private float _parryLockUntil;   // blade is being blocked by another blade
+    private float _clashFxAt;
     private bool _wieldable = true;
     private float _noiseSeed;
+
+    // ---- clash registry (host iterates live pairs) -------------------------
+    /// <summary>All live wielders; indexes are stable (swap-remove).</summary>
+    internal static readonly List<SwordWielder> All = new();
+    internal int RegistryIndex { get; private set; } = -1;
+
+    internal DrunkFightPlayer Owner => _owner;
+    internal Vector3 Pivot => transform.position;
+    internal Vector3 TipPos => TipPosition;
+    internal Vector3 Forward => _dir;
+    internal bool IsParryLocked => Time.time < _parryLockUntil;
+    internal bool IsClashable => _owner != null && _wieldable && RegistryIndex >= 0
+        && _owner.GearActive && _owner.Alive.Value && !_owner.Frozen.Value;
+
+    /// <summary>Velocity of the blade at a world point (from angular velocity).</summary>
+    internal Vector3 VelAt(Vector3 point) => Vector3.Cross(_angVel, point - transform.position);
 
     // ---------------------------------------------------------------- setup
 
@@ -50,7 +68,21 @@ public class SwordWielder : MonoBehaviour
         _noiseSeed = Random.value * 100f;
         _dir = transform.parent.forward;                 // start pointing where the body faces
         _prevTip = TipPosition;
+        RegistryIndex = All.Count;
+        All.Add(this);
         BuildMesh();
+    }
+
+    private void OnDestroy()
+    {
+        // swap-remove so other wielders' indexes stay valid
+        if (RegistryIndex >= 0 && RegistryIndex < All.Count)
+        {
+            All[RegistryIndex] = All[All.Count - 1];
+            if (All[RegistryIndex] != null) All[RegistryIndex].RegistryIndex = RegistryIndex;
+            All.RemoveAt(All.Count - 1);
+        }
+        RegistryIndex = -1;
     }
 
     public void SetWieldable(bool wieldable) => _wieldable = wieldable;
@@ -67,7 +99,10 @@ public class SwordWielder : MonoBehaviour
         Simulate(dt);
 
         if (_owner.IsServer && _wieldable && _owner.Alive.Value && !_owner.Frozen.Value)
+        {
+            SwordClash.RunHostPairs(this);   // blades can block blades
             HostSweepForDamage(dt);
+        }
     }
 
     private void Simulate(float dt)
@@ -125,10 +160,60 @@ public class SwordWielder : MonoBehaviour
         _angVel += transform.parent.forward * stabImpulse;
     }
 
+    // ---------------------------------------------------------------- clashing (blade blocks blade)
+
+    /// <summary>
+    /// Host only: our blade met another blade. The swing is parried — no
+    /// damage while the lock lasts — and the blade bounces off the contact.
+    /// </summary>
+    internal void HostClash(Vector3 awayNormal, float closing, bool strong, Vector3 point)
+    {
+        _parryLockUntil = Mathf.Max(_parryLockUntil,
+            Time.time + (strong ? 0.35f : 0.12f));
+
+        // kill most of the swing, kick the blade away from the other sword
+        _angVel *= 0.35f;
+        Vector3 axis = Vector3.Cross(_dir, awayNormal);
+        if (axis.sqrMagnitude > 1e-6f)
+            _angVel += axis.normalized * (0.6f + closing * 0.10f);
+
+        if (Time.time < _clashFxAt) return;      // don't clang every frame in a lock
+        _clashFxAt = Time.time + 0.35f;
+
+        _owner.HostClashPush(awayNormal);
+        _owner.HostReportClash(point, awayNormal, strong ? 1f : 0.5f);
+    }
+
+    /// <summary>Client-side twin of the clash impulse, fed by ClientRpc, so
+    /// remote blade springs bounce the same way they do on the host.</summary>
+    internal void ClientClash(Vector3 awayNormal, float strength)
+    {
+        _angVel *= 0.35f;
+        Vector3 axis = Vector3.Cross(_dir, awayNormal);
+        if (axis.sqrMagnitude > 1e-6f)
+            _angVel += axis.normalized * (0.6f * strength);
+    }
+
+    /// <summary>Test hook: force blade state directly.</summary>
+    internal void DebugSetBlade(Vector3 dir, Vector3 angVel, Vector3 prevTip)
+    {
+        _dir = dir.normalized;
+        _angVel = angVel;
+        _prevTip = prevTip;
+    }
+
     // ---------------------------------------------------------------- host: damage
 
-    private void HostSweepForDamage(float dt)
+    internal void HostSweepForDamage(float dt)
     {
+        // parried: this swing was stopped by another blade — no damage, but
+        // keep the tip path honest so the post-parry sweep doesn't teleport
+        if (Time.time < _parryLockUntil)
+        {
+            _prevTip = TipPosition;
+            return;
+        }
+
         Vector3 prevTip = _prevTip;
         Vector3 tip = TipPosition;
         Vector3 tipVel = (tip - prevTip) / dt;

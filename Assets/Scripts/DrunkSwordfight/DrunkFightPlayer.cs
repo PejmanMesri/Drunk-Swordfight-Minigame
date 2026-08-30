@@ -322,6 +322,33 @@ public class DrunkFightPlayer : NetworkBehaviour
         if (_audio != null) _audio.PlayOneShot(ProceduralAudio.Clang(), 0.4f);
     }
 
+    // ---------------------------------------------------------------- clashing
+
+    /// <summary>Host only: small stagger when your blade gets bounced.</summary>
+    internal void HostClashPush(Vector3 awayDir)
+    {
+        if (!IsServer) return;
+        var v = awayDir.normalized * 1.2f;
+        _rb.linearVelocity += new Vector3(v.x, 0.2f, v.z);
+    }
+
+    /// <summary>Host only: tell every peer a blade clash happened.</summary>
+    internal void HostReportClash(Vector3 point, Vector3 awayNormal, float strength)
+    {
+        BladeClashClientRpc(point, awayNormal, strength);
+    }
+
+    [ClientRpc]
+    private void BladeClashClientRpc(Vector3 point, Vector3 awayNormal, float strength)
+    {
+        // the host already applied the impulse in SwordWielder.HostClash
+        if (!IsServer) _sword?.ClientClash(awayNormal, strength);
+
+        Fx.Sparks(point, awayNormal, 8f * strength);
+        if (_audio != null) _audio.PlayOneShot(ProceduralAudio.Clang(), 0.25f + 0.35f * strength);
+        if (IsOwner) _camera?.Shake(0.25f * strength);
+    }
+
     // ---------------------------------------------------------------- damage (host only)
 
     /// <summary>Host only. Called by SwordWielder sweeps and the minigame.</summary>

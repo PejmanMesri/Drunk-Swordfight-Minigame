@@ -18,7 +18,7 @@ public class DrunkSwordfightMinigame : MinigameBase
 {
     [Header("Drunk Swordfight")]
     [SerializeField] private float countdownStep = 0.8f;
-    [SerializeField] private float winnerLinger = 3.5f;
+    [SerializeField] private float winnerLinger = 8f;
     [SerializeField] private float fallKillHeight = -8f;
 
     /// <summary>Replicated banner text ("3", "FIGHT!", "PLAYER 1 IS DOWN"...).</summary>
