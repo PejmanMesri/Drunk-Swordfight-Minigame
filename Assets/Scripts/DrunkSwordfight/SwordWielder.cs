@@ -20,7 +20,7 @@ public class SwordWielder : MonoBehaviour
     [Header("Spring (tune the feel here)")]
     [SerializeField] private float stiffness = 55f;
     [SerializeField] private float damping = 6.5f;
-    [SerializeField] private float maxAngVel = 22f;      // rad/s
+    [SerializeField] private float maxAngVel = 26f;      // rad/s
     [SerializeField] private float stabImpulse = 26f;    // rad/s forward kick
 
     [Header("Damage")]
@@ -164,24 +164,25 @@ public class SwordWielder : MonoBehaviour
 
     /// <summary>
     /// Host only: our blade met another blade. The swing is parried — no
-    /// damage while the lock lasts — and the blade bounces off the contact.
+    /// damage while the lock lasts — and BOTH fighters get shoved apart
+    /// hard enough to matter (a proper clash should feel like a car crash).
     /// </summary>
     internal void HostClash(Vector3 awayNormal, float closing, bool strong, Vector3 point)
     {
         _parryLockUntil = Mathf.Max(_parryLockUntil,
             Time.time + (strong ? 0.35f : 0.12f));
 
-        // kill most of the swing, kick the blade away from the other sword
+        // kill most of the swing, then really fling the blade off the other sword
         _angVel *= 0.35f;
         Vector3 axis = Vector3.Cross(_dir, awayNormal);
         if (axis.sqrMagnitude > 1e-6f)
-            _angVel += axis.normalized * (0.6f + closing * 0.10f);
+            _angVel += axis.normalized * (1.4f + closing * 0.28f);
 
         if (Time.time < _clashFxAt) return;      // don't clang every frame in a lock
         _clashFxAt = Time.time + 0.35f;
 
-        _owner.HostClashPush(awayNormal);
-        _owner.HostReportClash(point, awayNormal, strong ? 1f : 0.5f);
+        _owner.HostClashPush(awayNormal, closing);
+        _owner.HostReportClash(point, awayNormal, strong ? 1.2f : 0.5f);
     }
 
     /// <summary>Client-side twin of the clash impulse, fed by ClientRpc, so
@@ -191,7 +192,7 @@ public class SwordWielder : MonoBehaviour
         _angVel *= 0.35f;
         Vector3 axis = Vector3.Cross(_dir, awayNormal);
         if (axis.sqrMagnitude > 1e-6f)
-            _angVel += axis.normalized * (0.6f * strength);
+            _angVel += axis.normalized * (1.4f * strength);
     }
 
     /// <summary>Test hook: force blade state directly.</summary>

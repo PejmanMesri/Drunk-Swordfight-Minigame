@@ -49,7 +49,7 @@ public class DrunkFightPlayer : NetworkBehaviour
     public NetworkVariable<FixedString64Bytes> FighterName =
         new(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<float> AimPitch =
-        new(12f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        new(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     // ---- locally built gear ------------------------------------------------
 
@@ -171,7 +171,8 @@ public class DrunkFightPlayer : NetworkBehaviour
 
     private void BuildBottle()
     {
-        _bottle = WhiskeyBottle.Build(transform, new Vector3(-0.20f, 0.02f, -0.07f));
+        // front-left hip: visible in first person when you glance down
+        _bottle = WhiskeyBottle.Build(transform, new Vector3(-0.18f, 0.05f, 0.22f));
         _bottleRestPos = _bottle.localPosition;
         _bottleRestRot = _bottle.localRotation;
     }
@@ -184,14 +185,16 @@ public class DrunkFightPlayer : NetworkBehaviour
 
         float dt = Time.deltaTime;
 
-        // bottle sip animation runs on every peer so everyone sees the glug
+        // bottle sip animation runs on every peer so everyone sees the glug.
+        // In first person the bottle is parked on the FRONT hip (visible when
+        // you look down) and swings up right in front of your face to drink.
         if (_sipAnimTimer > 0f)
         {
             _sipAnimTimer -= dt;
             float t = 1f - Mathf.Clamp01(_sipAnimTimer / sipLockSeconds);
             float raise = Mathf.Sin(Mathf.Clamp01(t) * Mathf.PI);   // 0 -> 1 -> 0
             _bottle.localPosition = Vector3.Lerp(_bottleRestPos,
-                _bottleRestPos + new Vector3(0.16f, 0.35f, 0.25f), raise);
+                _bottleRestPos + new Vector3(0.12f, 0.50f, 0.42f), raise);
             _bottle.localRotation = _bottleRestRot * Quaternion.Euler(-40f * raise, 0f, 0f);
         }
         _bottle.gameObject.SetActive(SipsLeft.Value > 0 || _sipAnimTimer > 0f);
@@ -336,12 +339,14 @@ public class DrunkFightPlayer : NetworkBehaviour
 
     // ---------------------------------------------------------------- clashing
 
-    /// <summary>Host only: small stagger when your blade gets bounced.</summary>
-    internal void HostClashPush(Vector3 awayDir)
+    /// <summary>Host only: stagger when blades bounce off each other. Scaled
+    /// by how hard the two swords were closing — real clashes SHOVE.</summary>
+    internal void HostClashPush(Vector3 awayDir, float closing)
     {
         if (!IsServer) return;
-        var v = awayDir.normalized * 1.2f;
-        _rb.linearVelocity += new Vector3(v.x, 0.2f, v.z);
+        float power = Mathf.Min(1.5f + closing * 0.9f, 7f);
+        var v = awayDir.normalized * power;
+        _rb.linearVelocity += new Vector3(v.x, 0.9f + power * 0.08f, v.z);
     }
 
     /// <summary>Host only: tell every peer a blade clash happened.</summary>
@@ -370,8 +375,9 @@ public class DrunkFightPlayer : NetworkBehaviour
 
         Hp.Value = Mathf.Max(0f, Hp.Value - amount);
 
-        var push = impulseDir.normalized * Mathf.Min(2.5f + amount * 0.06f, 5f);
-        _rb.linearVelocity += new Vector3(push.x, 0.4f, push.z);
+        // MEATY knockback: a clean hit should launch people across the tavern
+        var push = impulseDir.normalized * Mathf.Min(4f + amount * 0.12f, 9f);
+        _rb.linearVelocity += new Vector3(push.x, 1.1f, push.z);
 
         HitClientRpc(transform.position + Vector3.up * 1.2f, impulseDir, amount, attackerId);
 

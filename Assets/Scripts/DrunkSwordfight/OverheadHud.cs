@@ -28,6 +28,10 @@ public class OverheadHud : MonoBehaviour
         go.transform.SetParent(owner.transform, false);
         go.transform.localPosition = new Vector3(0f, 1.05f, 0f);
 
+        // first person: your own status lives on the screen HUD, and a bar
+        // hovering over your own eyes would be in the way
+        if (owner.IsOwner) go.SetActive(false);
+
         var hud = go.AddComponent<OverheadHud>();
         hud._owner = owner;
         hud.Build();

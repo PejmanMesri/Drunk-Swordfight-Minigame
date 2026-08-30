@@ -3,16 +3,20 @@
 A tavern brawl: everyone gets a sword, 100 HP and one bottle of whiskey.
 Last one standing wins.
 
-## Controls
+## Controls (first person)
 
 | Input | Action |
 |---|---|
-| WASD | Move (camera-relative) |
-| Mouse | Wield the sword — the blade lags behind your aim like a heavy object; **tip speed deals damage**, so whip the mouse to swing |
+| WASD | Move (view-relative) |
+| Mouse | Look — and wield the sword: the blade lags behind your aim like a heavy object; **tip speed deals damage**, so whip the mouse to swing |
 | LMB | Stab lunge (big damage, telegraphs hard) |
 | Mouse Y | Aim up/down (also aims the blade) |
-| Q | Sip whiskey: +35 HP, +1 drunk level. **3 sips, one bottle, no refills.** |
+| Q | Sip whiskey: +35 HP, +1 drunk level. **3 sips, one bottle, no refills.** The bottle hangs on your front hip (glance down to check it) and swings up in front of your face when you drink |
 | ESC | Release the mouse cursor (click to grab it again) |
+
+Hits knock people across the room (scaled by damage), and blade-vs-blade
+clashes shove BOTH fighters apart — the harder the swords were closing, the
+bigger the shove.
 
 ## Blocking
 

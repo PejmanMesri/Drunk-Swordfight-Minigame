@@ -83,8 +83,10 @@ public class DrunkSwordfightSmokeTests
         Assert.IsNotNull(avatarPrefab, "MinigameManager has no avatar prefab");
 
         Vector3 fwd = fighter.transform.forward;
+        // spawn the clone WELL outside blade range first — no incidental hits
+        // while it settles, calibrates and unfreezes
         var cloneGo = Object.Instantiate(avatarPrefab,
-            fighter.transform.position + fwd * 0.9f, Quaternion.LookRotation(-fwd));
+            fighter.transform.position + fwd * 2.5f, Quaternion.LookRotation(-fwd));
         var cloneNo = cloneGo.GetComponent<NetworkObject>();
         cloneNo.Spawn();
         yield return new WaitForSeconds(0.3f);
@@ -99,7 +101,11 @@ public class DrunkSwordfightSmokeTests
         Assert.IsNotNull(realSword, "our sword missing");
         Assert.IsNotNull(fakeSword, "their sword missing");
 
-        // aim both blades at the same midpoint so they cross
+        // bring them together AND cross blades in one synchronous block, so
+        // no physics step can sneak a hit in before the parry is armed
+        cloneGo.transform.position = fighter.transform.position + fwd * 0.9f;
+        cloneGo.transform.rotation = Quaternion.LookRotation(-fwd);
+
         var mid = (realSword.Pivot + fakeSword.Pivot) * 0.5f + Vector3.up * 0.05f;
         realSword.DebugSetBlade(mid - realSword.Pivot, Vector3.up * 6f, realSword.TipPos);
         fakeSword.DebugSetBlade(mid - fakeSword.Pivot, -Vector3.up * 6f, fakeSword.TipPos);
