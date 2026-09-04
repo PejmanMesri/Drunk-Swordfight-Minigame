@@ -64,6 +64,9 @@ public class DrunkFightPlayer : NetworkBehaviour
 
     private Rigidbody _rb;
     private MinigamePlayerController _controller;
+    private AvatarAnimatorDriver _driver;
+    private Transform _model;
+    private float _swaySeed;
 
     // owner-side input state
     private float _localYaw;
@@ -113,8 +116,13 @@ public class DrunkFightPlayer : NetworkBehaviour
         if (GearActive) return;
         GearActive = true;
 
+        _driver = GetComponent<AvatarAnimatorDriver>();
+        _model = transform.Find("Model");
+        _swaySeed = Random.value * 100f;
+
         BuildSword();
         BuildBottle();
+        _driver?.SetSwordGrip(this, _sword);
         _overhead = OverheadHud.Create(this);
         _audio = gameObject.AddComponent<AudioSource>();
         _audio.spatialBlend = 1f;
@@ -137,6 +145,9 @@ public class DrunkFightPlayer : NetworkBehaviour
     {
         if (!GearActive) return;
         GearActive = false;
+
+        _driver?.SetSwordGrip(null, null);
+        if (_model != null) _model.localRotation = Quaternion.identity;
 
         if (_camera != null) Destroy(_camera.gameObject);
         if (_hud != null) Destroy(_hud.gameObject);
@@ -202,6 +213,16 @@ public class DrunkFightPlayer : NetworkBehaviour
         if (IsOwner) OwnerInputTick();
 
         if (IsServer) ServerTick(dt);
+
+        // drunk fighters can't stand still: subtle body sway on the model
+        if (_model != null && Alive.Value)
+        {
+            float wob = DrunkLevel.Value * 1.6f;
+            float t = Time.time + _swaySeed;
+            float leanX = (Mathf.PerlinNoise(t * 0.8f, 1.7f) - 0.5f) * wob;
+            float leanZ = (Mathf.PerlinNoise(t * 0.65f, 9.3f) - 0.5f) * wob * 1.4f;
+            _model.localRotation = Quaternion.Euler(leanX, 0f, leanZ);
+        }
     }
 
     private void OwnerInputTick()
@@ -322,13 +343,22 @@ public class DrunkFightPlayer : NetworkBehaviour
     public void WielderFxClientRpc()
     {
         _sword?.ClientStab();
-        if (_audio != null) _audio.PlayOneShot(ProceduralAudio.Whoosh(), 0.6f);
+        if (_audio != null)
+        {
+            _audio.pitch = Random.Range(0.85f, 1.15f);
+            _audio.PlayOneShot(ProceduralAudio.Whoosh(), 0.6f);
+        }
+        if (IsOwner) _camera?.FovKick();
     }
 
     [ClientRpc]
     public void PlayWhooshClientRpc()
     {
-        if (_audio != null) _audio.PlayOneShot(ProceduralAudio.Whoosh(), 0.5f);
+        if (_audio != null)
+        {
+            _audio.pitch = Random.Range(0.8f, 1.2f);
+            _audio.PlayOneShot(ProceduralAudio.Whoosh(), 0.5f);
+        }
     }
 
     [ClientRpc]

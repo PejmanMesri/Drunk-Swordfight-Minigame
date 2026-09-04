@@ -35,11 +35,22 @@ Each sip heals 35 HP but adds a drunk level (0-3). Drunk levels stack:
 
 - camera wobble, roll and breathing get worse
 - vignette + chromatic aberration + lens distortion ramp up
-- your walk veers off course on the host
+- your walk veers off course on the host, and your body visibly sways
 - the sword spring gets floppier and gains wobble torque — same mouse
   motion, lazier swing, less damage
 
-So the bottle is a comeback mechanic that costs you control.
+**And every ~30 seconds the bar calls another round: everyone alive gets
++1 drunk for free.** Camping your last sips is not a strategy — the tavern
+decides the pace. When you go down, your camera drifts out of your corpse
+into a slow orbit so you can watch the rest of the brawl.
+
+## Sword animation
+
+- The right hand is IK-locked onto the sword grip (the animator's Base
+  Layer has IK Pass enabled), so the arm holds the blade and swings with
+  it — on every peer, from locally simulated blade state
+- fast swings leave a glowing arc (TrailRenderer on the blade tip)
+- stabs punch the FOV; whooshes vary in pitch
 
 ## Architecture (follows the harness rules)
 

@@ -2,15 +2,14 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Drives the character model's Idle/Walking blend from observed motion.
-/// Runs on every peer: the host simulates the rigidbody, clients see the
-/// NetworkTransform interpolation — both can measure position deltas.
+/// Drives the character model's Idle/Walking blend from observed motion, and
+/// self-calibrates the model's height once at spawn (bind-pose bounds can
+/// sit far from where the retargeted runtime animation actually puts the
+/// feet — we slide the "Model" child until the feet land on the ground).
 ///
-/// Also self-calibrates the model's height once at spawn: bind-pose bounds
-/// (what we can measure offline) can sit far from where the RETARGETED
-/// runtime animation actually puts the feet. We wait for the first animated
-/// frames, then slide the "Model" child so the feet land at the capsule's
-/// bottom (local y = -1, i.e. ground level).
+/// During the swordfight it also runs right-hand IK onto the sword grip, so
+/// the arm visibly holds the blade and swings with it. The Base Layer of
+/// PlayerController has IK Pass enabled for this.
 /// </summary>
 public class AvatarAnimatorDriver : MonoBehaviour
 {
@@ -18,6 +17,18 @@ public class AvatarAnimatorDriver : MonoBehaviour
 
     private Animator _animator;
     private Vector3 _lastPos;
+
+    // sword IK (set by DrunkFightPlayer when the fight gear activates)
+    private DrunkFightPlayer _swordOwner;
+    private SwordWielder _sword;
+    private float _ikWeight;
+
+    /// <summary>Attach the right hand to this fighter's sword grip.</summary>
+    public void SetSwordGrip(DrunkFightPlayer owner, SwordWielder sword)
+    {
+        _swordOwner = owner;
+        _sword = sword;
+    }
 
     private void Awake()
     {
@@ -64,5 +75,35 @@ public class AvatarAnimatorDriver : MonoBehaviour
 
         float speed = Mathf.Clamp01(new Vector2(vel.x, vel.z).magnitude / walkSpeedReference);
         _animator.SetFloat("Speed", Mathf.Lerp(_animator.GetFloat("Speed"), speed, 0.25f));
+    }
+
+    private void OnAnimatorIK(int layerIndex)
+    {
+        if (_animator == null) return;
+
+        bool grip = _sword != null && _swordOwner != null
+            && _swordOwner.GearActive && _swordOwner.Alive.Value;
+
+        _ikWeight = Mathf.MoveTowards(_ikWeight, grip ? 1f : 0f, Time.deltaTime * 6f);
+        if (_ikWeight < 0.01f)
+        {
+            _animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
+            _animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0f);
+            _animator.SetIKHintPositionWeight(AvatarIKHint.RightElbow, 0f);
+            return;
+        }
+
+        var hand = _sword.HandTarget;
+        var hint = _sword.ElbowHint;
+
+        _animator.SetIKPosition(AvatarIKGoal.RightHand, hand.position);
+        _animator.SetIKRotation(AvatarIKGoal.RightHand, hand.rotation);
+        _animator.SetIKHintPosition(AvatarIKHint.RightElbow, hint.position);
+
+        _animator.SetIKPositionWeight(AvatarIKGoal.RightHand, _ikWeight);
+        // position dominates; rotation at partial weight so a bad bone axis
+        // doesn't snap the wrist into spaghetti
+        _animator.SetIKRotationWeight(AvatarIKGoal.RightHand, _ikWeight * 0.6f);
+        _animator.SetIKHintPositionWeight(AvatarIKHint.RightElbow, _ikWeight * 0.8f);
     }
 }

@@ -44,6 +44,14 @@ public class SwordWielder : MonoBehaviour
     private bool _wieldable = true;
     private float _noiseSeed;
 
+    // ---- swing visuals -------------------------------------------------------
+    private TrailRenderer _trail;
+    private Vector3 _prevTipVisual;
+
+    /// <summary>IK anchors: the right hand grips here, elbow is nudged here.</summary>
+    internal Transform HandTarget { get; private set; }
+    internal Transform ElbowHint { get; private set; }
+
     // ---- clash registry (host iterates live pairs) -------------------------
     /// <summary>All live wielders; indexes are stable (swap-remove).</summary>
     internal static readonly List<SwordWielder> All = new();
@@ -68,6 +76,7 @@ public class SwordWielder : MonoBehaviour
         _noiseSeed = Random.value * 100f;
         _dir = transform.parent.forward;                 // start pointing where the body faces
         _prevTip = TipPosition;
+        _prevTipVisual = TipPosition;
         RegistryIndex = All.Count;
         All.Add(this);
         BuildMesh();
@@ -98,11 +107,25 @@ public class SwordWielder : MonoBehaviour
         float dt = Time.fixedDeltaTime;
         Simulate(dt);
 
+        UpdateSwingTrail(dt);
+
         if (_owner.IsServer && _wieldable && _owner.Alive.Value && !_owner.Frozen.Value)
         {
             SwordClash.RunHostPairs(this);   // blades can block blades
             HostSweepForDamage(dt);
         }
+    }
+
+    /// <summary>Per-peer: a bright arc trails the tip while it moves fast.</summary>
+    private void UpdateSwingTrail(float dt)
+    {
+        if (_trail == null) return;
+
+        Vector3 tip = TipPosition;
+        float speed = (tip - _prevTipVisual).magnitude / dt;
+        _prevTipVisual = tip;
+
+        _trail.emitting = speed > 5f && _wieldable && _owner.Alive.Value && !_owner.Frozen.Value;
     }
 
     private void Simulate(float dt)
@@ -322,6 +345,48 @@ public class SwordWielder : MonoBehaviour
         tip.transform.localPosition = new Vector3(0f, 0f, 0.73f);
         SetMat(tip, steel);
         NoCollide(tip);
+
+        BuildIkAnchors();
+        BuildTrail();
+    }
+
+    /// <summary>Where the right hand grips (just behind the guard) and where
+    /// the elbow gets nudged so the arm reads as holding the sword.</summary>
+    private void BuildIkAnchors()
+    {
+        var hand = new GameObject("HandTarget");
+        hand.transform.SetParent(transform, false);
+        hand.transform.localPosition = new Vector3(0f, 0.02f, 0.10f);
+        HandTarget = hand.transform;
+
+        var elbow = new GameObject("ElbowHint");
+        elbow.transform.SetParent(transform, false);
+        elbow.transform.localPosition = new Vector3(0f, -0.22f, -0.18f);
+        ElbowHint = elbow.transform;
+    }
+
+    private void BuildTrail()
+    {
+        var trailGo = new GameObject("SwingTrail");
+        trailGo.transform.SetParent(transform, false);
+        trailGo.transform.localPosition = new Vector3(0f, 0f, 0.70f);
+
+        _trail = trailGo.AddComponent<TrailRenderer>();
+        _trail.time = 0.14f;
+        _trail.startWidth = 0.055f;
+        _trail.endWidth = 0f;
+        _trail.minVertexDistance = 0.01f;
+        _trail.numCapVertices = 2;
+        _trail.emitting = false;
+        _trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        _trail.startColor = new Color(1f, 0.92f, 0.65f, 0.55f);
+        _trail.endColor = new Color(1f, 0.75f, 0.3f, 0f);
+
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader != null)
+        {
+            _trail.material = new Material(shader);
+        }
     }
 
     private static void Name(Transform t, string n) => t.name = n;

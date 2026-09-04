@@ -21,6 +21,8 @@ public class DrunkFightCamera : MonoBehaviour
     private Transform _target;
     private Camera _cam;
     private float _shake;
+    private float _fovKick;
+    private float _spectatorBlend;
 
     public float Yaw { get; private set; }
     public float Pitch { get; private set; } = 0f;
@@ -68,6 +70,9 @@ public class DrunkFightCamera : MonoBehaviour
 
     public void Shake(float amount01) => _shake = Mathf.Max(_shake, amount01);
 
+    /// <summary>Brief FOV punch, used on stabs.</summary>
+    public void FovKick() => _fovKick = 9f;
+
     private void LateUpdate()
     {
         if (_target == null) return;
@@ -82,11 +87,31 @@ public class DrunkFightCamera : MonoBehaviour
 
         // sit in the head (the model's head is invisible from inside thanks
         // to backface culling), look where the mouse points
-        transform.position = _target.position
+        Vector3 fpPos = _target.position
             + Vector3.up * HeadHeight
             + _target.forward * ForwardOffset;
-        transform.rotation = Quaternion.Euler(Pitch + pitchOff, Yaw + yawOff, 0f)
+        Quaternion fpRot = Quaternion.Euler(Pitch + pitchOff, Yaw + yawOff, 0f)
             * Quaternion.Euler(0f, 0f, roll);
+
+        // once you're down, drift out of your corpse into a slow orbit
+        bool dead = _owner != null && !_owner.Alive.Value;
+        _spectatorBlend = Mathf.MoveTowards(_spectatorBlend, dead ? 1f : 0f, Time.deltaTime * 0.5f);
+
+        if (_spectatorBlend > 0.001f)
+        {
+            float angle = t * 0.25f;
+            var center = _target.position + Vector3.up * 0.6f;
+            Vector3 orbit = center + new Vector3(Mathf.Sin(angle) * 5.5f, 3.2f, Mathf.Cos(angle) * 5.5f);
+            Quaternion orbitRot = Quaternion.LookRotation(center - orbit);
+
+            transform.position = Vector3.Lerp(fpPos, orbit, _spectatorBlend);
+            transform.rotation = Quaternion.Slerp(fpRot, orbitRot, _spectatorBlend);
+        }
+        else
+        {
+            transform.position = fpPos;
+            transform.rotation = fpRot;
+        }
 
         if (_shake > 0.001f)
         {
@@ -97,7 +122,9 @@ public class DrunkFightCamera : MonoBehaviour
             _shake = Mathf.MoveTowards(_shake, 0f, Time.deltaTime * 3.5f);
         }
 
-        if (_cam != null) _cam.fieldOfView = 70f + Mathf.Sin(t * 0.6f) * 2f * wob;
+        _fovKick = Mathf.MoveTowards(_fovKick, 0f, Time.deltaTime * 45f);
+        if (_cam != null)
+            _cam.fieldOfView = 70f + Mathf.Sin(t * 0.6f) * 2f * wob + _fovKick;
 
         UpdatePostFx(drunk);
     }

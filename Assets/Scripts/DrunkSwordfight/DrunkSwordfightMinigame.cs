@@ -20,6 +20,7 @@ public class DrunkSwordfightMinigame : MinigameBase
     [SerializeField] private float countdownStep = 0.8f;
     [SerializeField] private float winnerLinger = 8f;
     [SerializeField] private float fallKillHeight = -8f;
+    [SerializeField] private float roundIntervalSeconds = 30f;
 
     /// <summary>Replicated banner text ("3", "FIGHT!", "PLAYER 1 IS DOWN"...).</summary>
     public NetworkVariable<FixedString64Bytes> Announcement =
@@ -36,6 +37,7 @@ public class DrunkSwordfightMinigame : MinigameBase
 
     private bool _fightStarted;
     private bool _roundOver;
+    private float _nextRoundAt;                         // next free drink pour
     private AudioSource _music;                        // 2D beeps/fanfare
     private readonly List<Light> _disabledForeignLights = new();
     private Color _oldAmbient;
@@ -168,12 +170,34 @@ public class DrunkSwordfightMinigame : MinigameBase
         Announce("FIGHT!"); Beep(880f);
         foreach (var fighter in _fighters.Values) fighter.HostSetFrozen(false);
         _fightStarted = true;
+        _nextRoundAt = Time.time + roundIntervalSeconds;
     }
 
     protected override void Update()
     {
         base.Update();                       // time-limit safety net
         if (!IsServer || !_fightStarted || _roundOver) return;
+
+        // "another round on the house": everyone gets drunker over time, so
+        // camping the last two sips is not a strategy
+        if (roundIntervalSeconds > 0f && Time.time >= _nextRoundAt)
+        {
+            _nextRoundAt = Time.time + roundIntervalSeconds;
+            bool anyoneLeveled = false;
+            foreach (var kv in _fighters)
+            {
+                var fighter = kv.Value;
+                if (fighter == null || !fighter.Alive.Value || fighter.DrunkLevel.Value >= 3) continue;
+                fighter.DrunkLevel.Value++;
+                anyoneLeveled = true;
+            }
+            if (anyoneLeveled)
+            {
+                Announce("ANOTHER ROUND ON THE HOUSE — +1 DRUNK");
+                Beep(660f);
+                BeepAfter(0.15f, 880f);
+            }
+        }
 
         for (int i = _alive.Count - 1; i >= 0; i--)
         {
@@ -259,6 +283,17 @@ public class DrunkSwordfightMinigame : MinigameBase
     private void Beep(float freq)
     {
         if (_music != null) _music.PlayOneShot(ProceduralAudio.Beep(freq), 0.5f);
+    }
+
+    private void BeepAfter(float delay, float freq)
+    {
+        StartCoroutine(BeepAfterRoutine(delay, freq));
+    }
+
+    private IEnumerator BeepAfterRoutine(float delay, float freq)
+    {
+        yield return new WaitForSeconds(delay);
+        Beep(freq);
     }
 
     [ClientRpc]
