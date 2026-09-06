@@ -233,7 +233,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MinigamePlayerController
   ShowTopMostFoldoutHeaderGroup: 1
-  moveSpeed: 6
+  moveSpeed: 4.5
 --- !u!114 &8615067928990504761
 MonoBehaviour:
   m_ObjectHideFlags: 0

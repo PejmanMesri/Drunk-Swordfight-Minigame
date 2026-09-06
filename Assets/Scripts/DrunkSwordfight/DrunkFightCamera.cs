@@ -79,11 +79,11 @@ public class DrunkFightCamera : MonoBehaviour
 
         float t = Time.time;
         float drunk = _owner != null ? _owner.DrunkLevel.Value : 0f;
-        float wob = drunk * 0.55f;
+        float wob = 0.15f + drunk * 0.72f;      // even sober, the room tilts a little
 
-        float yawOff = (Mathf.PerlinNoise(t * 0.55f, 3.1f) - 0.5f) * 4.5f * wob;
-        float pitchOff = (Mathf.PerlinNoise(t * 0.72f, 8.2f) - 0.5f) * 3.6f * wob;
-        float roll = (Mathf.PerlinNoise(t * 0.40f, 12.3f) - 0.5f) * 10f * wob;
+        float yawOff = (Mathf.PerlinNoise(t * 0.55f, 3.1f) - 0.5f) * 5.5f * wob;
+        float pitchOff = (Mathf.PerlinNoise(t * 0.72f, 8.2f) - 0.5f) * 4.5f * wob;
+        float roll = (Mathf.PerlinNoise(t * 0.40f, 12.3f) - 0.5f) * 13f * wob;
 
         // sit in the head (the model's head is invisible from inside thanks
         // to backface culling), look where the mouse points

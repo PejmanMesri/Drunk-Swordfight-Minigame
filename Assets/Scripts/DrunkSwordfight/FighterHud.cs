@@ -27,7 +27,7 @@ public class FighterHud : MonoBehaviour
     private float _sipAlpha;
     private float _hintTimer = 8f;
 
-    private static readonly string[] DrunkNames = { "SOBER", "BUZZED", "TIPSY", "WASTED" };
+    private static readonly string[] DrunkNames = { "SOBER", "BUZZED", "DRUNK", "WASTED" };
     private static readonly Color[] DrunkColors =
     {
         new(0.7f, 0.9f, 0.7f), new(1f, 0.85f, 0.3f), new(1f, 0.55f, 0.2f), new(1f, 0.3f, 0.25f)
@@ -107,7 +107,7 @@ public class FighterHud : MonoBehaviour
         // ---- controls hint --------------------------------------------------
         _hint = Text(font, 26, new Vector2(0, 40), new Vector2(1200, 40), new Vector2(0.5f, 0f),
             TextAnchor.UpperCenter, new Color(1f, 1f, 1f, 0.8f));
-        _hint.text = "WASD move  ·  MOUSE wields the sword  ·  LMB stab  ·  Q sip whiskey  ·  cross blades to block";
+        _hint.text = "WASD stumble  ·  MOUSE wields the sword  ·  LMB stab  ·  SPACE jump  ·  Q sip whiskey";
     }
 
     private static void Stretch(RectTransform rt)

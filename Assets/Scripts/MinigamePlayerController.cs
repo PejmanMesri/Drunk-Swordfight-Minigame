@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -15,6 +16,11 @@ using UnityEngine.InputSystem;
 public class MinigamePlayerController : NetworkBehaviour
 {
     [SerializeField] private float moveSpeed = 6f;
+
+    /// <summary>Host-side speed multiplier and input bias, set by minigames
+    /// (e.g. drunk fighters are slower and weave).</summary>
+    [NonSerialized] public float HostSpeedScale = 1f;
+    [NonSerialized] public Vector2 HostInputBias = Vector2.zero;
 
     private Rigidbody _rb;
     private Vector2 _hostInput;   // host side: latest intent from this client
@@ -46,11 +52,15 @@ public class MinigamePlayerController : NetworkBehaviour
         SendInputServerRpc(input);
     }
 
+    /// <summary>Host side: the latest movement intent received from the owner.</summary>
+    public Vector2 HostLatestInput => _hostInput;
+
     private void FixedUpdate()
     {
         if (!IsServer) return;
 
-        var wanted = new Vector3(_hostInput.x, 0f, _hostInput.y) * moveSpeed;
+        var intent = Vector2.ClampMagnitude(_hostInput + HostInputBias, 1.2f);
+        var wanted = new Vector3(intent.x, 0f, intent.y) * (moveSpeed * HostSpeedScale);
         var v = _rb.linearVelocity;
         _rb.linearVelocity = new Vector3(wanted.x, v.y, wanted.z);
     }

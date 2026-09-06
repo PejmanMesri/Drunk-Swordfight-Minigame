@@ -62,11 +62,11 @@ public class DrunkSwordfightSmokeTests
         Assert.IsNotNull(fighter, "No DrunkFightPlayer avatar spawned");
         Assert.IsTrue(fighter.GearActive, "Swordfight gear never activated");
         Assert.IsNotNull(fighter.GetComponentInChildren<SwordWielder>(true), "Sword missing");
-        Assert.IsNotNull(fighter.transform.Find("WhiskeyBottle"), "Whiskey bottle missing");
+        Assert.IsNotNull(FindDeep(fighter.transform, "WhiskeyBottle"), "Whiskey bottle missing");
 
         Assert.AreEqual(100f, fighter.Hp.Value, 0.01f);
         Assert.AreEqual(3, fighter.SipsLeft.Value);
-        Assert.AreEqual(0, fighter.DrunkLevel.Value);
+        Assert.AreEqual(2, fighter.DrunkLevel.Value, "everyone starts drunk in this tavern");
         Assert.IsTrue(fighter.Alive.Value);
         Assert.IsTrue(fighter.Frozen.Value, "should be frozen during countdown");
 
@@ -131,7 +131,7 @@ public class DrunkSwordfightSmokeTests
         CallPrivate(fighter, "TrySipServerRpc");
         yield return new WaitForSeconds(1.0f);
         Assert.AreEqual(2, fighter.SipsLeft.Value, "sip should leave 2 sips");
-        Assert.AreEqual(1, fighter.DrunkLevel.Value, "sip should add drunk level");
+        Assert.AreEqual(3, fighter.DrunkLevel.Value, "sip from starting drunk 2 caps at 3");
         Assert.AreEqual(100f, fighter.Hp.Value, 0.01f, "heal caps at max HP");
 
         // take a hit, then heal from the bottle
@@ -181,5 +181,12 @@ public class DrunkSwordfightSmokeTests
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         Assert.IsNotNull(mi, $"method {method} not found on {typeof(T).Name}");
         mi.Invoke(target, null);
+    }
+
+    private static Transform FindDeep(Transform root, string name)
+    {
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name == name) return t;
+        return null;
     }
 }

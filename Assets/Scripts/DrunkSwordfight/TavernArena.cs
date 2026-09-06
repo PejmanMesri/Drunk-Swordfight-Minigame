@@ -31,6 +31,7 @@ public class TavernArena : MonoBehaviour
         BuildBarrels();
         BuildCrates();
         BuildLights();
+        BuildDustMotes();
     }
 
     // ------------------------------------------------------------------ pieces
@@ -166,6 +167,54 @@ public class TavernArena : MonoBehaviour
         light.range = range;
         light.intensity = intensity;
         light.shadows = LightShadows.Soft;
+
+        go.AddComponent<LanternFlicker>();       // candlelight, not fluorescent
+    }
+
+    private void BuildDustMotes()
+    {
+        var go = new GameObject("DustMotes");
+        go.transform.SetParent(transform, false);
+        go.transform.position = new Vector3(0f, 2.4f, 0f);
+
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        var main = ps.main;
+        main.playOnAwake = true;
+        main.loop = true;
+        main.duration = 6f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(4f, 7f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.08f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.015f, 0.04f);
+        main.startColor = new Color(1f, 0.9f, 0.7f, 0.16f);
+        main.gravityModifier = -0.005f;          // lazily float upward
+        main.maxParticles = 80;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 12f;
+
+        var shape = ps.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(12f, 2.4f, 12f);
+
+        var vel = ps.velocityOverLifetime;
+        vel.enabled = true;
+        vel.x = new ParticleSystem.MinMaxCurve(-0.06f, 0.06f);
+        vel.z = new ParticleSystem.MinMaxCurve(-0.06f, 0.06f);
+
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader != null)
+        {
+            var mat = new Material(shader);
+            mat.SetFloat("_Surface", 1f);        // transparent
+            mat.SetFloat("_Blend", 0f);
+            mat.renderQueue = 3000;
+            go.GetComponent<ParticleSystemRenderer>().material = mat;
+        }
+
+        ps.Play();
     }
 
     // ------------------------------------------------------------------ helpers
@@ -213,5 +262,33 @@ public class TavernArena : MonoBehaviour
             m.SetColor("_EmissionColor", emissive.Value);
         }
         return m;
+    }
+}
+
+/// <summary>
+/// Candlelight flicker: two octaves of perlin noise wandering the intensity,
+/// so the tavern breathes instead of sitting under office lighting.
+/// </summary>
+public class LanternFlicker : MonoBehaviour
+{
+    private Light _light;
+    private float _base;
+    private float _seed;
+
+    private void Awake()
+    {
+        _light = GetComponent<Light>();
+        _base = _light != null ? _light.intensity : 1f;
+        _seed = Random.value * 100f;
+    }
+
+    private void Update()
+    {
+        if (_light == null) return;
+        float t = Time.time;
+        float f = 1f
+            + (Mathf.PerlinNoise(t * 7.0f, _seed) - 0.5f) * 0.22f     // fast crackle
+            + (Mathf.PerlinNoise(t * 1.7f, _seed + 40f) - 0.5f) * 0.12f; // slow swell
+        _light.intensity = _base * f;
     }
 }

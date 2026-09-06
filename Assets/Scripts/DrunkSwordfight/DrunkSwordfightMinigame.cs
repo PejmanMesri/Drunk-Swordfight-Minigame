@@ -54,6 +54,12 @@ public class DrunkSwordfightMinigame : MinigameBase
         _music.spatialBlend = 0f;
         _music.playOnAwake = false;
 
+        // faint crowd murmur under everything: the tavern is alive
+        _music.clip = ProceduralAudio.TavernMurmur();
+        _music.loop = true;
+        _music.volume = 0.10f;
+        _music.Play();
+
         MakeTavernAtmosphere();
     }
 

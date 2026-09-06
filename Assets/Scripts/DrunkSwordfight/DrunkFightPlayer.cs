@@ -26,6 +26,12 @@ public class DrunkFightPlayer : NetworkBehaviour
     [SerializeField] private float sipHeal = 35f;
     [SerializeField] private byte sipsPerBottle = 3;
     [SerializeField] private float sipLockSeconds = 0.9f;
+    [Tooltip("Drunk level everyone starts at. This is a tavern, after all.")]
+    [SerializeField] private byte startingDrunkLevel = 2;
+
+    [Header("Drunk walking")]
+    [SerializeField] private float jumpImpulse = 5.2f;
+    [SerializeField] private float jumpCooldown = 0.55f;
 
     [Header("Sword (built at runtime). The pivot rides on the character model," +
             " whose origin sits at the FEET after ground calibration.")]
@@ -67,6 +73,8 @@ public class DrunkFightPlayer : NetworkBehaviour
     private AvatarAnimatorDriver _driver;
     private Transform _model;
     private float _swaySeed;
+    private Transform _handBone;    // left hand — holds the whiskey
+    private Transform _headBone;    // bottle raises to here when sipping
 
     // owner-side input state
     private float _localYaw;
@@ -77,6 +85,7 @@ public class DrunkFightPlayer : NetworkBehaviour
     private float _hostYaw;
     private float _hostSipLock;
     private float _drunkYawNoiseSeed;
+    private float _jumpLock;
 
     public bool GearActive { get; private set; }
     public SwordWielder Sword => _sword;
@@ -92,7 +101,7 @@ public class DrunkFightPlayer : NetworkBehaviour
         {
             Hp.Value = maxHp;
             SipsLeft.Value = sipsPerBottle;
-            DrunkLevel.Value = 0;
+            DrunkLevel.Value = startingDrunkLevel;
             Alive.Value = true;
             Frozen.Value = true;                       // frozen until "FIGHT!"
             FighterName.Value = new FixedString64Bytes($"Player {OwnerClientId}");
@@ -182,8 +191,22 @@ public class DrunkFightPlayer : NetworkBehaviour
 
     private void BuildBottle()
     {
-        // front-left hip: visible in first person when you glance down
-        _bottle = WhiskeyBottle.Build(transform, new Vector3(-0.18f, 0.05f, 0.22f));
+        // the bottle lives IN THE LEFT HAND — look down and there it is
+        _handBone = RigUtil.FindBone(transform, "LeftHand");
+        _headBone = RigUtil.FindBone(transform, "Head");
+
+        var parent = _handBone != null ? _handBone : transform;
+        _bottle = WhiskeyBottle.Build(parent, Vector3.zero);
+
+        // undo the rig's scale so the bottle stays bottle-sized
+        var s = parent.lossyScale;
+        if (s.sqrMagnitude > 0.0001f && s.x > 0.001f)
+            _bottle.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
+
+        // cradled in the palm, lying along the fist
+        _bottle.localPosition = new Vector3(0f, -0.02f, 0.06f);
+        _bottle.localRotation = Quaternion.Euler(100f, 0f, 0f);
+
         _bottleRestPos = _bottle.localPosition;
         _bottleRestRot = _bottle.localRotation;
     }
@@ -196,17 +219,36 @@ public class DrunkFightPlayer : NetworkBehaviour
 
         float dt = Time.deltaTime;
 
-        // bottle sip animation runs on every peer so everyone sees the glug.
-        // In first person the bottle is parked on the FRONT hip (visible when
-        // you look down) and swings up right in front of your face to drink.
+        // bottle sip animation runs on every peer so everyone sees the glug:
+        // the bottle swings from the left hand up in front of the face
         if (_sipAnimTimer > 0f)
         {
             _sipAnimTimer -= dt;
             float t = 1f - Mathf.Clamp01(_sipAnimTimer / sipLockSeconds);
             float raise = Mathf.Sin(Mathf.Clamp01(t) * Mathf.PI);   // 0 -> 1 -> 0
-            _bottle.localPosition = Vector3.Lerp(_bottleRestPos,
-                _bottleRestPos + new Vector3(0.12f, 0.50f, 0.42f), raise);
-            _bottle.localRotation = _bottleRestRot * Quaternion.Euler(-40f * raise, 0f, 0f);
+
+            // where the bottle rests (in hand) and where you drink from it
+            var parent = _bottle.parent;
+            var restPos = parent.TransformPoint(_bottleRestPos);
+            var restRot = parent.rotation * _bottleRestRot;
+
+            Vector3 headPos = _headBone != null
+                ? _headBone.position
+                : transform.position + Vector3.up * 0.6f;
+            Vector3 headFwd = _headBone != null && _headBone.forward.sqrMagnitude > 0.01f
+                ? _headBone.forward
+                : transform.forward;
+            var drinkPos = headPos + headFwd * 0.34f + Vector3.down * 0.10f;
+            var drinkRot = Quaternion.LookRotation(headFwd, Vector3.up) * Quaternion.Euler(-70f, 0f, 0f);
+
+            _bottle.SetPositionAndRotation(
+                Vector3.Lerp(restPos, drinkPos, raise),
+                Quaternion.Slerp(restRot, drinkRot, raise));
+        }
+        else if (_bottle.localPosition != _bottleRestPos)
+        {
+            _bottle.localPosition = _bottleRestPos;
+            _bottle.localRotation = _bottleRestRot;
         }
         _bottle.gameObject.SetActive(SipsLeft.Value > 0 || _sipAnimTimer > 0f);
 
@@ -233,6 +275,9 @@ public class DrunkFightPlayer : NetworkBehaviour
 
         if (kb != null && kb.qKey.wasPressedThisFrame)
             TrySipServerRpc();
+
+        if (kb != null && kb.spaceKey.wasPressedThisFrame)
+            JumpServerRpc();
 
         if (mouse == null) return;
 
@@ -294,10 +339,26 @@ public class DrunkFightPlayer : NetworkBehaviour
         if (!Alive.Value) return;
 
         if (_hostSipLock > 0f) _hostSipLock -= dt;
+        if (_jumpLock > 0f) _jumpLock -= dt;
+
+        int drunk = DrunkLevel.Value;
+        float t = Time.time + _drunkYawNoiseSeed;
+
+        // the drunker you are, the less your legs obey: slower, veering,
+        // weaving side to side with every step
+        if (_controller != null)
+        {
+            _controller.HostSpeedScale = 1f - 0.11f * drunk;
+
+            float moving = Mathf.Clamp01(_controller.HostLatestInput.magnitude);
+            float veerDeg = (Mathf.PerlinNoise(t * 0.22f, 4.4f) - 0.5f) * 110f * drunk;
+            float weaveMag = (0.5f + 0.5f * Mathf.Sin(t * 1.9f)) * 0.30f * drunk * moving;
+            _controller.HostInputBias = MathUtil.Rotate(Vector2.right, veerDeg) * weaveMag;
+        }
 
         // drunk fighters slowly veer off course even when walking straight
-        float wander = Mathf.PerlinNoise(_drunkYawNoiseSeed + Time.time * 0.13f, 0f) - 0.5f;
-        _rb.rotation = Quaternion.Euler(0f, _hostYaw + wander * DrunkLevel.Value * 7f, 0f);
+        float wander = Mathf.PerlinNoise(t * 0.13f, 0f) - 0.5f;
+        _rb.rotation = Quaternion.Euler(0f, _hostYaw + wander * drunk * 10f, 0f);
     }
 
     // ---------------------------------------------------------------- input rpcs
@@ -313,6 +374,34 @@ public class DrunkFightPlayer : NetworkBehaviour
     {
         if (!Alive.Value || Frozen.Value) return;
         _sword?.HostStab();
+    }
+
+    [ServerRpc]
+    private void JumpServerRpc()
+    {
+        if (!Alive.Value || Frozen.Value || _jumpLock > 0f) return;
+
+        // grounded? capsule bottom is 1 below the root
+        if (!Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, 1.25f))
+            return;
+
+        _jumpLock = jumpCooldown;
+
+        // drunk legs jump... approximately where you wanted
+        float scatter = DrunkLevel.Value * 0.45f;
+        var sideways = new Vector3(Random.Range(-scatter, scatter), 0f, Random.Range(-scatter, scatter));
+        _rb.linearVelocity = new Vector3(
+            _rb.linearVelocity.x * 0.5f + sideways.x,
+            jumpImpulse,
+            _rb.linearVelocity.z * 0.5f + sideways.z);
+
+        JumpFxClientRpc();
+    }
+
+    [ClientRpc]
+    private void JumpFxClientRpc()
+    {
+        if (_audio != null) _audio.PlayOneShot(ProceduralAudio.Beep(180f), 0.2f);
     }
 
     [ServerRpc]
@@ -374,9 +463,9 @@ public class DrunkFightPlayer : NetworkBehaviour
     internal void HostClashPush(Vector3 awayDir, float closing)
     {
         if (!IsServer) return;
-        float power = Mathf.Min(1.5f + closing * 0.9f, 7f);
+        float power = Mathf.Min(2.5f + closing * 1.2f, 9f);
         var v = awayDir.normalized * power;
-        _rb.linearVelocity += new Vector3(v.x, 0.9f + power * 0.08f, v.z);
+        _rb.linearVelocity += new Vector3(v.x, 1.0f + power * 0.10f, v.z);
     }
 
     /// <summary>Host only: tell every peer a blade clash happened.</summary>
@@ -406,8 +495,8 @@ public class DrunkFightPlayer : NetworkBehaviour
         Hp.Value = Mathf.Max(0f, Hp.Value - amount);
 
         // MEATY knockback: a clean hit should launch people across the tavern
-        var push = impulseDir.normalized * Mathf.Min(4f + amount * 0.12f, 9f);
-        _rb.linearVelocity += new Vector3(push.x, 1.1f, push.z);
+        var push = impulseDir.normalized * Mathf.Min(5.5f + amount * 0.16f, 12f);
+        _rb.linearVelocity += new Vector3(push.x, 1.3f, push.z);
 
         HitClientRpc(transform.position + Vector3.up * 1.2f, impulseDir, amount, attackerId);
 
@@ -423,8 +512,9 @@ public class DrunkFightPlayer : NetworkBehaviour
         // face-plant: let physics tumble the body
         _rb.constraints = RigidbodyConstraints.None;
         _rb.angularVelocity = new Vector3(
-            Random.Range(-3f, 3f), Random.Range(-2f, 2f), Random.Range(-3f, 3f));
-        _rb.linearVelocity += Vector3.up * 1.5f;
+            Random.Range(-5f, 5f), Random.Range(-3f, 3f), Random.Range(-5f, 5f));
+        _rb.linearVelocity *= 1.4f;
+        _rb.linearVelocity += Vector3.up * 2.5f;
         _rb.mass = 80f; // heavy corpse, no bouncing around
 
         if (_sword != null) _sword.SetWieldable(false);
@@ -452,7 +542,7 @@ public class DrunkFightPlayer : NetworkBehaviour
         if (!IsServer) return;
         Hp.Value = maxHp;
         SipsLeft.Value = sipsPerBottle;
-        DrunkLevel.Value = 0;
+        DrunkLevel.Value = startingDrunkLevel;
         Alive.Value = true;
         Frozen.Value = true;
         _hostYaw = facingYawDeg;

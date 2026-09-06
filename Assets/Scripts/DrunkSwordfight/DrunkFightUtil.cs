@@ -33,3 +33,17 @@ public static class SceneUtil
         return false;
     }
 }
+
+public static class RigUtil
+{
+    /// <summary>Finds a bone by name suffix, e.g. "LeftHand" matches
+    /// "mixamorig1:LeftHand" but not "mixamorig1:LeftHandIndex1".</summary>
+    public static Transform FindBone(Transform root, string nameSuffix)
+    {
+        if (root == null) return null;
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name.EndsWith(nameSuffix, System.StringComparison.OrdinalIgnoreCase))
+                return t;
+        return null;
+    }
+}

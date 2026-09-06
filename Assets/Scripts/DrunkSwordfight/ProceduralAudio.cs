@@ -63,6 +63,28 @@ public static class ProceduralAudio
         return v * 0.5f;
     });
 
+    /// <summary>Loopable 5-second tavern bed: low crowd murmur that swells
+    /// and fades, with the occasional glass clink. Play quiet, looped.</summary>
+    public static AudioClip TavernMurmur() => Get("tavern-murmur", 5f, t =>
+    {
+        // crowd rumble: heavily low-passed noise, amplitude slowly breathing
+        float breathe = 0.55f + 0.45f * (0.5f + 0.5f * Mathf.Sin(t * 0.83f)
+                                         * Mathf.Sin(t * 0.31f + 1.7f));
+        float murmur = LowPassedNoise(t, 0.012f) * breathe * 0.8f;
+
+        // sparse clinks somewhere in the room (about one per 2.5s on average)
+        float v = murmur;
+        int slot = (int)(t * 2f);
+        float inSlot = t * 2f - slot;
+        if (Hash01(slot * 31 + 77) > 0.42f)
+        {
+            float freq = 1400f + Hash01(slot * 17 + 91) * 1600f;
+            v += Mathf.Sin(2f * Mathf.PI * freq * inSlot)
+                 * Mathf.Exp(-inSlot * 40f) * 0.10f;
+        }
+        return v;
+    });
+
     // ---------------------------------------------------------------- synth helpers
 
     private static float Blip(float t, float start, float len, float freq)

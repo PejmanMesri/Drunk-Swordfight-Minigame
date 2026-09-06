@@ -24,7 +24,7 @@ public class SwordWielder : MonoBehaviour
     [SerializeField] private float stabImpulse = 26f;    // rad/s forward kick
 
     [Header("Damage")]
-    [SerializeField] private float bladeLength = 0.85f;
+    [SerializeField] private float bladeLength = 0.95f;
     [SerializeField] private float minHitSpeed = 3.5f;   // m/s at the tip
     [SerializeField] private float maxHitSpeed = 11f;
     [SerializeField] private float damageAtMinSpeed = 16f;
@@ -141,8 +141,8 @@ public class SwordWielder : MonoBehaviour
             : Quaternion.Euler(_owner.AimPitch.Value, yaw, 0f) * Vector3.forward;
 
         // drunk: floppier spring, plus wobble torque
-        float k = stiffness * (1f - 0.20f * drunk) * (dead ? 0.4f : 1f);
-        float c = Mathf.Max(1f, damping - 0.55f * drunk);
+        float k = stiffness * (1f - 0.24f * drunk) * (dead ? 0.4f : 1f);
+        float c = Mathf.Max(1f, damping - 0.6f * drunk);
 
         _angVel += (target - _dir) * k * dt;
         _angVel *= Mathf.Max(0f, 1f - c * dt);
@@ -158,7 +158,7 @@ public class SwordWielder : MonoBehaviour
             float t = Time.time + _noiseSeed;
             float nx = Mathf.PerlinNoise(t * 1.1f, 0.3f) - 0.5f;
             float ny = Mathf.PerlinNoise(t * 0.9f, 7.7f) - 0.5f;
-            _angVel += (axisRight * nx + axisUp * ny) * (9f * drunk) * dt;
+            _angVel += (axisRight * nx + axisUp * ny) * (14f * drunk) * dt;
         }
 
         if (_angVel.sqrMagnitude > maxAngVel * maxAngVel)
@@ -300,54 +300,94 @@ public class SwordWielder : MonoBehaviour
     private void BuildMesh()
     {
         var steel = LoadMat("DrunkFight/Mats/Steel");
+        var glow = LoadEmissive("DrunkFight/Mats/SteelGlow", new Color(0.95f, 0.9f, 0.75f));
         var brass = LoadMat("DrunkFight/Mats/Brass");
         var leather = LoadMat("DrunkFight/Mats/Leather");
+        var gem = LoadMat("DrunkFight/Mats/GlassAmber");
 
-        // grip along +Z
+        // ---- grip -----------------------------------------------------
         var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         Name(grip.transform, "Grip");
         grip.transform.SetParent(transform, false);
         grip.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
         grip.transform.localScale = new Vector3(0.032f, 0.09f, 0.032f);
-        grip.transform.localPosition = new Vector3(0f, 0f, -0.04f);
+        grip.transform.localPosition = new Vector3(0f, 0f, -0.055f);
         SetMat(grip, leather);
         NoCollide(grip);
 
         var pommel = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         Name(pommel.transform, "Pommel");
         pommel.transform.SetParent(transform, false);
-        pommel.transform.localScale = Vector3.one * 0.05f;
-        pommel.transform.localPosition = new Vector3(0f, 0f, -0.14f);
+        pommel.transform.localScale = Vector3.one * 0.055f;
+        pommel.transform.localPosition = new Vector3(0f, 0f, -0.165f);
         SetMat(pommel, brass);
         NoCollide(pommel);
 
+        // ---- crossguard with quillon balls + a little gem --------------
         var guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
         Name(guard.transform, "Guard");
         guard.transform.SetParent(transform, false);
-        guard.transform.localScale = new Vector3(0.20f, 0.028f, 0.045f);
-        guard.transform.localPosition = new Vector3(0f, 0f, 0.05f);
+        guard.transform.localScale = new Vector3(0.26f, 0.03f, 0.05f);
+        guard.transform.localPosition = new Vector3(0f, 0f, 0.045f);
         SetMat(guard, brass);
         NoCollide(guard);
 
-        var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Name(blade.transform, "Blade");
-        blade.transform.SetParent(transform, false);
-        blade.transform.localScale = new Vector3(0.055f, 0.014f, 0.62f);
-        blade.transform.localPosition = new Vector3(0f, 0f, 0.37f);
-        SetMat(blade, steel);
-        NoCollide(blade);
+        foreach (float side in new[] { -0.14f, 0.14f })
+        {
+            var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Name(ball.transform, $"Quillon{side:0;-0}");
+            ball.transform.SetParent(transform, false);
+            ball.transform.localScale = Vector3.one * 0.034f;
+            ball.transform.localPosition = new Vector3(side, 0f, 0.045f);
+            SetMat(ball, brass);
+            NoCollide(ball);
+        }
 
-        var tip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Name(tip.transform, "Tip");
-        tip.transform.SetParent(transform, false);
-        tip.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
-        tip.transform.localScale = new Vector3(0.055f, 0.055f, 0.10f);
-        tip.transform.localPosition = new Vector3(0f, 0f, 0.73f);
-        SetMat(tip, steel);
-        NoCollide(tip);
+        var guardGem = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Name(guardGem.transform, "GuardGem");
+        guardGem.transform.SetParent(transform, false);
+        guardGem.transform.localScale = Vector3.one * 0.026f;
+        guardGem.transform.localPosition = new Vector3(0f, 0.024f, 0.045f);
+        SetMat(guardGem, gem);
+        NoCollide(guardGem);
+
+        // ---- tapered blade (three sections narrowing to the point) ----
+        Blade("BladeBase", 0.075f, 0.022f, 0.30f, 0.22f, steel);
+        Blade("BladeMid", 0.060f, 0.018f, 0.30f, 0.50f, steel);
+        Blade("BladeTip", 0.040f, 0.014f, 0.18f, 0.72f, steel);
+
+        var point = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Name(point.transform, "Point");
+        point.transform.SetParent(transform, false);
+        point.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+        point.transform.localScale = new Vector3(0.040f, 0.040f, 0.09f);
+        point.transform.localPosition = new Vector3(0f, 0f, 0.845f);
+        SetMat(point, steel);
+        NoCollide(point);
+
+        // ---- glowing fuller: reads in the dark and catches the eye -----
+        var fuller = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Name(fuller.transform, "Fuller");
+        fuller.transform.SetParent(transform, false);
+        fuller.transform.localScale = new Vector3(0.012f, 0.026f, 0.72f);
+        fuller.transform.localPosition = new Vector3(0f, 0f, 0.40f);
+        SetMat(fuller, glow);
+        NoCollide(fuller);
 
         BuildIkAnchors();
         BuildTrail();
+    }
+
+    private void Blade(string name, float width, float thickness, float length,
+                       float zCenter, Material mat)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Name(go.transform, name);
+        go.transform.SetParent(transform, false);
+        go.transform.localScale = new Vector3(width, thickness, length);
+        go.transform.localPosition = new Vector3(0f, 0f, zCenter);
+        SetMat(go, mat);
+        NoCollide(go);
     }
 
     /// <summary>Where the right hand grips (just behind the guard) and where
@@ -369,7 +409,7 @@ public class SwordWielder : MonoBehaviour
     {
         var trailGo = new GameObject("SwingTrail");
         trailGo.transform.SetParent(transform, false);
-        trailGo.transform.localPosition = new Vector3(0f, 0f, 0.70f);
+        trailGo.transform.localPosition = new Vector3(0f, 0f, 0.84f);
 
         _trail = trailGo.AddComponent<TrailRenderer>();
         _trail.time = 0.14f;
@@ -405,6 +445,19 @@ public class SwordWielder : MonoBehaviour
         // fallback so the game still works before the editor step has run
         var lit = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         lit.color = new Color(0.7f, 0.7f, 0.72f);
+        return lit;
+    }
+
+    /// <summary>Fallback-friendly emissive material (the glowing fuller).</summary>
+    internal static Material LoadEmissive(string path, Color color)
+    {
+        var m = Resources.Load<Material>(path);
+        if (m != null) return m;
+
+        var lit = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        lit.color = color;
+        lit.EnableKeyword("_EMISSION");
+        lit.SetColor("_EmissionColor", color * 1.8f);
         return lit;
     }
 }

@@ -7,16 +7,18 @@ Last one standing wins.
 
 | Input | Action |
 |---|---|
-| WASD | Move (view-relative) |
+| WASD | Stumble around (slower and less obedient the drunker you are) |
+| SPACE | Jump — drunk legs push off approximately where you meant |
 | Mouse | Look — and wield the sword: the blade lags behind your aim like a heavy object; **tip speed deals damage**, so whip the mouse to swing |
 | LMB | Stab lunge (big damage, telegraphs hard) |
-| Mouse Y | Aim up/down (also aims the blade) |
-| Q | Sip whiskey: +35 HP, +1 drunk level. **3 sips, one bottle, no refills.** The bottle hangs on your front hip (glance down to check it) and swings up in front of your face when you drink |
+| Q | Sip whiskey: +35 HP, +1 drunk. **3 sips, one bottle**, held in your LEFT HAND (glance down) — it swings up to your face when you drink |
 | ESC | Release the mouse cursor (click to grab it again) |
 
-Hits knock people across the room (scaled by damage), and blade-vs-blade
-clashes shove BOTH fighters apart — the harder the swords were closing, the
-bigger the shove.
+You start the round at **DRUNK (level 2)** — this is a tavern, not a tea
+house. Everyone's sword spring is already wobbly, the camera already sways,
+and your legs already weave. Sips push you toward WASTED. Hits knock people
+across the room (scaled by damage), and blade clashes shove BOTH fighters
+apart — the harder the swords were closing, the bigger the shove.
 
 ## Blocking
 

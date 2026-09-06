@@ -192,7 +192,7 @@ public static class DrunkSwordfightSetup
         var woodWall = LoadTex("WoodWall");
         var label = LoadTex("WhiskeyLabel");
 
-        Mat("WoodFloor", m => { m.SetTexture("_BaseMap", woodFloor); m.SetTextureScale("_BaseMap", new Vector2(3.5f, 3.5f)); m.SetFloat("_Smoothness", 0.15f); });
+        Mat("WoodFloor", m => { m.SetTexture("_BaseMap", woodFloor); m.SetTextureScale("_BaseMap", new Vector2(3.5f, 3.5f)); m.SetFloat("_Smoothness", 0.35f); });
         Mat("WoodWall", m => { m.SetTexture("_BaseMap", woodWall); m.SetFloat("_Smoothness", 0.12f); });
         Mat("PlainWood", m => { m.SetColor("_BaseColor", Wood(0.47f, 0.33f, 0.19f)); m.SetFloat("_Smoothness", 0.2f); });
         Mat("Stone", m => { m.SetColor("_BaseColor", new Color(0.36f, 0.35f, 0.38f)); m.SetFloat("_Smoothness", 0.08f); });
@@ -205,6 +205,13 @@ public static class DrunkSwordfightSetup
             m.SetFloat("_Smoothness", 0.8f);
         });
         Mat("Steel", m => { m.SetColor("_BaseColor", new Color(0.72f, 0.75f, 0.80f)); m.SetFloat("_Metallic", 0.9f); m.SetFloat("_Smoothness", 0.85f); });
+        Mat("SteelGlow", m =>
+        {
+            m.SetColor("_BaseColor", new Color(0.95f, 0.9f, 0.75f));
+            m.EnableKeyword("_EMISSION");
+            m.SetColor("_EmissionColor", new Color(0.9f, 0.8f, 0.55f) * 1.6f);
+            m.SetFloat("_Smoothness", 0.9f);
+        });
         Mat("Brass", m => { m.SetColor("_BaseColor", new Color(0.78f, 0.58f, 0.22f)); m.SetFloat("_Metallic", 0.85f); m.SetFloat("_Smoothness", 0.7f); });
         Mat("Leather", m => { m.SetColor("_BaseColor", Wood(0.30f, 0.15f, 0.07f)); m.SetFloat("_Smoothness", 0.3f); });
         Mat("WhiskeyGlass", m =>
